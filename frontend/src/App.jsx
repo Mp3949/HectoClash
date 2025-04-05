@@ -11,6 +11,8 @@ import SpectatorPage from "./Pages/Spectetor/LiveMatch.jsx";
 import LiveMatches from "./Pages/Spectetor/LiveMatch.jsx";
 import SpectatorMode from "./Pages/Spectetor/sepectetormode.jsx";
 import SignIn from "./Pages/login/signIn.jsx";
+import MatchResult from "./components/matxhResults.jsx";
+
 
 function App() {
   return (
@@ -30,6 +32,7 @@ function App() {
           <Route path="/multiplayer" element={<Multiplayer />} />
           <Route path="/training" element={<Training />} />
           <Route path="/spectmatch" element={<SpectatorMode />} />
+          <Route path="/matchresult" element={<MatchResult />} />
         </Routes>
       </main>
     </div>

@@ -5,8 +5,8 @@ import { BellIcon, Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useSelector, useDispatch } from "react-redux";
 import axios from "axios";
 import { setAuthUser } from "../redux/userSlice";
-import SignIn from "../pages/login/signIn.jsx";
-import SignUp from "../pages/signup/signUp.jsx";
+import SignIn from "../Pages/login/signIn";
+import  SignUp from "../Pages/signup/signUp"
 
 const Nav = () => {
   const [showSignIn, setShowSignIn] = useState(false);
@@ -71,7 +71,7 @@ const Nav = () => {
 
   const navLinks = [
     { name: "Home", path: "/", requiresAuth: false },
-    { name: "Play", path: "/play", requiresAuth: false },
+    { name: "Play", path: "/play", requiresAuth: true },
     { name: "Leaderboard", path: "/leaderboard", requiresAuth: true },
     { name: "Spectator Mode", path: "/livematches", requiresAuth: true },
     { name: "Profile", path: "/profile", requiresAuth: true, mobileOnly: true },

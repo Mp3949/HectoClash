@@ -6,10 +6,25 @@ export const createOrJoinMatch = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    let match = await Match.findOne({ status: "pending" });
+    // Check if the user is already in an active match
+    const existingMatch = await Match.findOne({
+      $or: [{ player1: userId }, { player2: userId }],
+      status: { $in: ["pending", "started"] },
+    }).populate("player1", "userName rating").populate("player2", "userName rating");
+
+    if (existingMatch) {
+      return res.status(400).json({
+        message: "User is already in an active match",
+        match: existingMatch,
+      });
+    }
+
+    // Try to find a pending match that doesn't have the same user as player1
+    let match = await Match.findOne({ status: "pending", player1: { $ne: userId } });
 
     if (!match) {
-      const { digits, solutions } = await getValidHectoDigits();
+      // Generate valid Hecto problem
+      const { digits } = await getValidHectoDigits();
 
       match = new Match({
         player1: userId,
@@ -18,19 +33,29 @@ export const createOrJoinMatch = async (req, res) => {
       });
 
       await match.save();
-      return res.status(201).json({ message: "Match created", match });
+      const populatedMatch = await Match.findById(match._id)
+        .populate("player1", "userName rating");
+
+      return res.status(201).json({ message: "Match created", match: populatedMatch });
     } else {
       match.player2 = userId;
       match.status = "started";
       match.startTime = new Date();
+
       await match.save();
-      return res.status(200).json({ message: "Match found", match });
+      const populatedMatch = await Match.findById(match._id)
+        .populate("player1", "userName rating")
+        .populate("player2", "userName rating");
+
+      return res.status(200).json({ message: "Match joined", match: populatedMatch });
     }
   } catch (error) {
-    console.error(error);
+    console.error("Matchmaking error:", error.message);
     return res.status(500).json({ message: "Internal server error" });
   }
 };
+
+
 
 export const submitAnswer = async (req, res) => {
   try {
