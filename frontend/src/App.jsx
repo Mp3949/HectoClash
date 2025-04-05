@@ -1,4 +1,5 @@
 import { Route, Routes } from "react-router-dom";
+<<<<<<< HEAD
 import Compete from "./Pages/compete/multiplayer.jsx";
 import LeaderboardPage from "./Pages/Leaderboard/leaderboard.jsx";
 import Profile from "./Pages/Profile/profile.jsx";
@@ -11,6 +12,20 @@ import Training from "./Pages/compete/training.jsx";
 import SpectatorPage from "./Pages/Spectetor/LiveMatch.jsx";
 import LiveMatches from "./Pages/Spectetor/LiveMatch.jsx";
 import SpectatorMode from "./Pages/Spectetor/sepectetormode.jsx";
+=======
+import Compete from "./pages/compete/multiplayer.jsx";
+import LeaderboardPage from "./pages/Leaderboard/leaderboard.jsx";
+import Profile from "./pages/Profile/profile.jsx";
+import Home from "./pages/home/Home.jsx";
+import SignIn from "./pages/login/signIn.jsx";
+import MatchmakingPage from "./pages/compete/matching.jsx";
+import SinglePlayer from "./pages/compete/singleplayer.jsx";
+import Multiplayer from "./pages/compete/multiplayer.jsx";
+import Training from "./pages/compete/training.jsx";
+import SpectatorPage from "./pages/Spectetor/LiveMatch.jsx";
+import LiveMatches from "./pages/Spectetor/LiveMatch.jsx";
+import SpectatorMode from "./pages/Spectetor/sepectetormode.jsx";
+>>>>>>> f3044c35774327da1efe61c0d6c30ab95cd1cba5
 
 function App() {
   return (
@@ -25,7 +40,7 @@ function App() {
           <Route path='/leaderboard' element={<LeaderboardPage />} />
           <Route path='/livematches' element={<LiveMatches />} />
           <Route path="/profile" element={<Profile />} />
-          <Route path="/matching" element={<MatchmakingPage />} />
+          <Route path="/play" element={<MatchmakingPage />} />
           <Route path="/singleplayer" element={<SinglePlayer />} />
           <Route path="/multiplayer" element={<Multiplayer />} />
           <Route path="/training" element={<Training />} />

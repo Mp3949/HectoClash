@@ -5,8 +5,13 @@ import { BellIcon, Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useSelector, useDispatch } from "react-redux";
 import axios from "axios";
 import { setAuthUser } from "../redux/userSlice";
+<<<<<<< HEAD
 import SignIn from "../Pages/login/signIn";
 import SignUp from "../Pages/signup/signUp";
+=======
+import SignIn from "../pages/login/signIn";
+import SignUp from "../pages/signup/signUp";
+>>>>>>> f3044c35774327da1efe61c0d6c30ab95cd1cba5
 
 const Nav = () => {
   const [showSignIn, setShowSignIn] = useState(false);
@@ -89,12 +94,17 @@ const Nav = () => {
                 Home
               </button>
               <button
+<<<<<<< HEAD
                 onClick={() => handleNavigation("/matching", true)}
                 className={`text-white hover:text-primary transition-colors ${
                   location.pathname === "/matching" ? "text-primary font-semibold" : ""
                 }`}
+=======
+                onClick={() => handleNavigation('/play')}
+                className={`text-white hover:text-primary transition-colors ${location.pathname === '/compete' ? 'text-primary font-semibold' : ''}`}
+>>>>>>> f3044c35774327da1efe61c0d6c30ab95cd1cba5
               >
-                Compete
+                Play
               </button>
               <button
                 onClick={() => handleNavigation("/leaderboard",true)}

@@ -13,8 +13,8 @@ const LiveMatches = () => {
       id: 'match1',
       player1: { name: 'MathWizard42', rating: 2450, avatar: 'M', country: '🇺🇸' },
       player2: { name: 'AlgebraQueen', rating: 2380, avatar: 'A', country: '🇬🇧' },
-      problem: { title: 'Fibonacci Sequence', difficulty: 'Medium', points: 100 },
-      timeElapsed: '3:45',
+      problem: { title: '1 2 3 4 5 6', difficulty: 'Medium', points: 100 },
+      timeElapsed: '3:45PM',
       moves: 12
     },
     {
@@ -22,7 +22,7 @@ const LiveMatches = () => {
       player1: { name: 'PrimeSolver', rating: 2310, avatar: 'P', country: '🇩🇪' },
       player2: { name: 'NumberNinja', rating: 2295, avatar: 'N', country: '🇯🇵' },
       problem: { title: 'Prime Factorization', difficulty: 'Hard', points: 150 },
-      timeElapsed: '2:30',
+      timeElapsed: '2:30PM',
       moves: 8
     },
     {
@@ -30,7 +30,7 @@ const LiveMatches = () => {
       player1: { name: 'GeoMaster', rating: 2250, avatar: 'G', country: '🇫🇷' },
       player2: { name: 'CalcKing', rating: 2275, avatar: 'C', country: '🇨🇦' },
       problem: { title: 'Matrix Operations', difficulty: 'Medium', points: 120 },
-      timeElapsed: '5:15',
+      timeElapsed: '5:15PM',
       moves: 15
     },
     {
@@ -38,7 +38,7 @@ const LiveMatches = () => {
       player1: { name: 'TrigPro', rating: 2190, avatar: 'T', country: '🇦🇺' },
       player2: { name: 'LogicLegend', rating: 2210, avatar: 'L', country: '🇮🇳' },
       problem: { title: 'Trigonometric Identities', difficulty: 'Easy', points: 80 },
-      timeElapsed: '1:20',
+      timeElapsed: '1:20PM',
       moves: 5
     },
     {
@@ -46,7 +46,7 @@ const LiveMatches = () => {
       player1: { name: 'DataDuke', rating: 2150, avatar: 'D', country: '🇧🇷' },
       player2: { name: 'AlgoAce', rating: 2175, avatar: 'A', country: '🇰🇷' },
       problem: { title: 'Binary Search', difficulty: 'Medium', points: 110 },
-      timeElapsed: '4:10',
+      timeElapsed: '4:10PM',
       moves: 10
     },
     {
@@ -54,7 +54,7 @@ const LiveMatches = () => {
       player1: { name: 'TrigPro', rating: 2190, avatar: 'T', country: '🇦🇺' },
       player2: { name: 'LogicLegend', rating: 2210, avatar: 'L', country: '🇮🇳' },
       problem: { title: 'Trigonometric Identities', difficulty: 'Easy', points: 80 },
-      timeElapsed: '3:20',
+      timeElapsed: '3:20PM',
       moves: 7
     }
   ];
