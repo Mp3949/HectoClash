@@ -3,7 +3,7 @@ import Compete from "./pages/compete/multiplayer.jsx";
 import LeaderboardPage from "./pages/Leaderboard/leaderboard.jsx";
 import Profile from "./pages/Profile/profile.jsx";
 import Home from "./pages/home/Home.jsx";
-import SignIn from "./pages/login/SignIn.jsx";
+import SignIn from "./pages/login/signIn.jsx";
 import MatchmakingPage from "./pages/compete/matching.jsx";
 import SinglePlayer from "./pages/compete/singleplayer.jsx";
 import Multiplayer from "./pages/compete/multiplayer.jsx";

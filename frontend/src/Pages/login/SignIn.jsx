@@ -44,6 +44,7 @@ const SignIn = ({ onClose, onSwitchToSignUp, onLoginSuccess }) => {
         onClose(); // 🔹 Close modal
         navigate("/"); // 🔹 Redirect after login
       }
+      
     } catch (err) {
       console.error("Login error:", err.response?.data);
       toast.error(err.response?.data?.message || "Login failed! Check your credentials.");

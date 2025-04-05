@@ -5,8 +5,8 @@ import { BellIcon, Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useSelector, useDispatch } from "react-redux";
 import axios from "axios";
 import { setAuthUser } from "../redux/userSlice";
-import SignIn from "../pages/login/SignIn";
-import SignUp from "../pages/signup/SignUp";
+import SignIn from "../pages/login/signIn";
+import SignUp from "../pages/signup/signUp";
 
 const Nav = () => {
   const [showSignIn, setShowSignIn] = useState(false);
