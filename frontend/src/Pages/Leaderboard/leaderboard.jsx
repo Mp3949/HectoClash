@@ -60,7 +60,7 @@ const LeaderboardPage = () => {
             <div className="relative z-10 container mx-auto px-4 py-12">
                 <div className="max-w-4xl mx-auto">
                     <h1 className="text-4xl font-bold text-center text-white mb-2">
-                        Matics Champions
+                        Hectoclash Champions
                     </h1>
                     <p className="text-gray-400 text-center mb-12">
                         Top performers this week

@@ -25,7 +25,7 @@ function App() {
           <Route path='/leaderboard' element={<LeaderboardPage />} />
           <Route path='/livematches' element={<LiveMatches />} />
           <Route path="/profile" element={<Profile />} />
-          <Route path="/matching" element={<MatchmakingPage />} />
+          <Route path="/play" element={<MatchmakingPage />} />
           <Route path="/singleplayer" element={<SinglePlayer />} />
           <Route path="/multiplayer" element={<Multiplayer />} />
           <Route path="/training" element={<Training />} />

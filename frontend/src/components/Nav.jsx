@@ -87,10 +87,10 @@ const Nav = () => {
                 Home
               </button>
               <button
-                onClick={() => handleNavigation('/matching')}
+                onClick={() => handleNavigation('/play')}
                 className={`text-white hover:text-primary transition-colors ${location.pathname === '/compete' ? 'text-primary font-semibold' : ''}`}
               >
-                Compete
+                Play
               </button>
               <button
                 onClick={() => handleNavigation('/leaderboard')}
