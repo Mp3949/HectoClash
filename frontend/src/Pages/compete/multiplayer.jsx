@@ -100,7 +100,7 @@ const Multiplayer = () => {
     return (
         <div className="min-h-screen bg-dark relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-radial from-primary/30 via-secondary/20 to-dark"></div>
-            <Nav />
+            
 
             <div className="relative z-10 container mx-auto px-4 py-8">
                 <div className="flex flex-col lg:flex-row gap-8 max-w-7xl mx-auto">

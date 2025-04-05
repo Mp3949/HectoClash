@@ -8,6 +8,7 @@ const SignUp = ({ onClose, onSwitchToSignIn }) => {
   const [showPassword2, setShowPassword2] = useState(false);
   const navigate = useNavigate();
   const [user, setUser] = useState({
+    name:'',
     userName: '',
     email: '',
     password: '',
@@ -42,7 +43,7 @@ const SignUp = ({ onClose, onSwitchToSignIn }) => {
       toast.error(err.response?.data?.message || 'Registration failed. Please try again.');
     }
 
-    setUser({ userName: '', email: '', password: '', confirmPassword: '' });
+    setUser({name:'',userName: '', email: '', password: '', confirmPassword: '' });
   };
 
   return (
@@ -54,6 +55,13 @@ const SignUp = ({ onClose, onSwitchToSignIn }) => {
         </div>
 
         <form onSubmit={submitHandler} className="mb-4">
+        <input
+            type="text"
+            placeholder="Name"
+            value={user.name}
+            onChange={(e) => setUser({ ...user, name: e.target.value })}
+            className="w-full bg-[#1e293b] text-white py-2.5 px-4 rounded-xl mb-4 border-2 border-primary/20 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+          />
           <input
             type="text"
             placeholder="Username"

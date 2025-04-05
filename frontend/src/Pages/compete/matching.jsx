@@ -122,7 +122,9 @@ const MatchmakingPage = () => {
   return (
     <div className="min-h-screen bg-dark relative overflow-hidden flex flex-col">
       <div className="absolute inset-0 bg-gradient-radial from-primary/30 via-secondary/20 to-dark"></div>
-      <Nav />
+      <div className="fixed top-0 left-0 w-full z-50 backdrop-blur- bg-dark/90 ">
+        <Nav />
+      </div>
 
       <div className="relative z-10 flex-grow container mx-auto px-4 py-8 flex flex-col">
         <h2 className="text-3xl font-bold text-white mb-8 text-center">Choose Your Game Mode</h2>
