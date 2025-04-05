@@ -1,71 +1,105 @@
 import { Server } from "socket.io";
-import { Match } from "./models/matchModel.js";
-import { User } from "./models/userModel.js";
+import http from 'http';
+import express from "express";
+import { getValidHectoDigits } from "../utils/generateProblem.js";
+import { Match } from "../models/matchModel.js";
+import { User } from "../models/userModel.js";
+import mongoose from "mongoose";
 
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server, {
+let io;
+const playerQueue = new Map();
+function initSocket(server) {
+  io = new Server(server, {
     cors: {
-        origin: ["http://localhost:3000"],
-        methods: ["GET", "POST"]
-    }
-});
+      origin: ["http://localhost:3000"],
+      methods: ["GET", "POST"],
+      credentials: true,
+    },
+  });
 
-io.on("connection", (socket) => {
-    console.log("A user connected:", socket.id);
+  io.on("connection", (socket) => {
+    console.log(`A user connected, ${socket.id}`);
 
-    socket.on("submitanswer", async ({ matchId, userId, answer }) => {
-        try {
-            console.log(`User ${userId} submitted answer: ${answer}`);
+    socket.on("join_matchmacking", async (userId) => {
+      console.log(`User ${userId} joined matchmacking`);
+      playerQueue.set(socket.id, userId);
 
-            const match = await Match.findById(matchId);
-            if (!match || match.status !== "started") {
-                return socket.emit("error", "Match not found or already finished");
-            }
+      //tryto find a match when player2 is null
+      let pendingMatch = await Match.findOne({
+        status: "pending",
+        player2: null,
+      });
 
-            let isValid = false;
-            try {
-                const evalAnswer = answer.replace(/×|x/g, "*").replace(/÷/g, "/");
-                if (eval(evalAnswer) === 100) {
-                    isValid = true;
-                }
-            } catch (error) {
-                console.error("Invalid expression:", error);
-                return socket.emit("error", "Invalid expression format");
-            }
+      if (pendingMatch) {
+        pendingMatch.player2 = userId;
+        pendingMatch.status = "started";
+        await pendingMatch.save();
 
-            if (isValid) {
-                if (!match.winner) {
-                    match.winner = userId;
-                    match.status = "finished";
-                    match.endTime = new Date();
-                    await match.save();
+        const roomId = pendingMatch._id.toString();
+        socket.join(roomId);
 
-                    await User.findByIdAndUpdate(userId, { $inc: { "stats.gamesPlayed": 1, "stats.wins": 1 } });
+        // Get opponent details for each player
+        const player1SocketId = [...playerQueue.entries()].find(
+          ([, val]) => val === pendingMatch.player1
+        )?.[0];
+        const player1 = await User.findById(pendingMatch.player1);
+        const player2 = await User.findById(pendingMatch.player2);
 
-                    const loserId = userId === match.player1 ? match.player2 : match.player1;
-                    if (loserId) {
-                        await User.findByIdAndUpdate(loserId, { $inc: { "stats.gamesPlayed": 1, "stats.losses": 1 } });
-                    }
-
-                    io.to(matchId).emit("matchFinished", { winner: userId });
-
-                    return socket.emit("matchResult", { message: "You won the match!", match });
-                } else {
-                    return socket.emit("error", "Match already won by another player");
-                }
-            }
-
-            return socket.emit("error", "Incorrect answer, try again");
-        } catch (error) {
-            console.error("Error in submitanswer:", error);
-            return socket.emit("error", "Internal server error");
+        if (player1SocketId) {
+          io.to(player1SocketId).emit("match_found", {
+            matchId: pendingMatch._id,
+            opponent: {
+              userName: player2.userName,
+              rating: player2.rating,
+            },
+          });
         }
+
+        socket.emit("match_found", {
+          matchId: pendingMatch._id,
+          opponent: {
+            userName: player1.userName,
+            rating: player1.rating,
+          },
+        });
+
+        // Notify both players of match start
+        io.to(roomId).emit("match_started", {
+          matchId: pendingMatch._id,
+          player1: pendingMatch.player1,
+          player2: pendingMatch.player2,
+          problem: pendingMatch.problem,
+        });
+
+        console.log(`Match ${pendingMatch._id} started`);
+      } else {
+        const newMatch = new Match({
+          player1: userId,
+          status: "pending",
+          problem: await getValidHectoDigits(),
+        });
+
+        await newMatch.save();
+        socket.join(newMatch._id.toString());
+        socket.emit("waiting_for_opponent", {
+          matchId: newMatch._id,
+        });
+        console.log(`Match ${newMatch._id} created`);
+      }
     });
 
     socket.on("disconnect", () => {
-        console.log("User disconnected:", socket.id);
+      console.log("A user disconnected");
+      playerQueue.delete(socket.id);
     });
-});
+  });
+}
 
-export { app, io, server }
+function getIo() {
+  if (!io) {
+    throw new Error("Socket.io not initialized");
+  }
+  return io;
+}
+
+export { initSocket, getIo };

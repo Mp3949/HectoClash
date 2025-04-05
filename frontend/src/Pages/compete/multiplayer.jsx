@@ -1,42 +1,69 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import Nav from "../../components/Nav";
+import { io } from "socket.io-client";
+import { useSelector } from "react-redux"; // Or use context if you're not using Redux
+
+const socket = io("http://localhost:8080", {
+  withCredentials: true,
+  autoConnect: false
+});
 
 const Multiplayer = () => {
   const navigate = useNavigate();
-  const [timeLeft, setTimeLeft] = useState(1 * 60); // 1-minute timer for demo
+  const location = useLocation();
+  const user = useSelector((state) => state.auth.user); // Get from Redux
+  const [timeLeft, setTimeLeft] = useState(1 * 60); // 1-minute timer
   const [expression, setExpression] = useState("");
   const [currentNumberIndex, setCurrentNumberIndex] = useState(0);
   const [activeModal, setActiveModal] = useState(null);
   const [gameEnded, setGameEnded] = useState(false);
   const [lastResult, setLastResult] = useState(null);
+  const [problem, setProblem] = useState('');
+  const [matchId, setMatchId] = useState(null);
+  // const [opponent, setOpponent] = useState(null);
+
+  useEffect(() => {
+     
+    // If user was navigated here from matchmaking
+    if (location.state) {
+      setMatchId(location.state.matchId);
+      setProblem(location.state.problem);
+      setOpponent(location.state.opponent);
+    }
+
+    socket.on("match", (data) => {
+      setMatchId(data.matchId);
+      setProblem(data.problem);
+      setOpponent(data.opponent);
+    });
+
+    return () => {
+      socket.off("match");
+    };
+  }, [location.state]);
 
   const [currentProblem] = useState({
-    title: "1 2 3 4 5 6",
+    title: problem,
     description:
       "Use operators [+,-,*,/,(,),^] to make the sequence equal 100 without changing number order.",
   });
 
-  const [user, setUser] = useState({
-    name: "You",
-    rating: 2100,
-    avatar: "ME",
+  const [, setUser] = useState({
+    name: user?.username || "You",
+    rating: user?.rating || 2000,
+    avatar: user?.username?.slice(0, 2).toUpperCase() || "YO",
     country: "🇮🇳",
     attempts: [],
   });
 
-  const [opponent] = useState({
-    name: "MathWizard42",
-    rating: 2450,
-    avatar: "MW",
+  const [opponent,setOpponent] = useState({
+    name: opponent?.username || "Opponent",
+    rating: opponent?.rating || 2000,
+    avatar: opponent?.username?.slice(0, 2).toUpperCase() || "OP",
     country: "🇺🇸",
-    attempts: [
-      { number: 1, timestamp: "00:45", result: 13, correct: false },
-      { number: 2, timestamp: "02:15", result: 76, correct: false },
-      { number: 3, timestamp: "04:50", result: 100, correct: true },
-    ],
+    attempts: [],
   });
-
   const numbers = currentProblem.title.split(" ").filter((char) => /\d/.test(char));
   const operators = ["+", "-", "×", "÷", "^", "(", ")"];
 
@@ -295,9 +322,8 @@ const PlayerPanel = ({ user, isOpponent }) => (
     <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
       <div className="flex items-center mb-6">
         <div
-          className={`w-16 h-16 rounded-full ${
-            isOpponent ? "bg-purple-600/20 border-purple-500/30" : "bg-blue-600/20 border-blue-500/30"
-          } flex items-center justify-center border-2 mr-4`}
+          className={`w-16 h-16 rounded-full ${isOpponent ? "bg-purple-600/20 border-purple-500/30" : "bg-blue-600/20 border-blue-500/30"
+            } flex items-center justify-center border-2 mr-4`}
         >
           <span className={`text-2xl font-bold ${isOpponent ? "text-purple-400" : "text-blue-400"}`}>
             {user.avatar}
@@ -318,18 +344,16 @@ const PlayerPanel = ({ user, isOpponent }) => (
           {user.attempts.map((attempt) => (
             <div
               key={attempt.number}
-              className={`bg-gray-900/50 p-3 rounded-lg border ${
-                attempt.correct ? "border-green-500/30" : "border-red-500/30"
-              }`}
+              className={`bg-gray-900/50 p-3 rounded-lg border ${attempt.correct ? "border-green-500/30" : "border-red-500/30"
+                }`}
             >
               <div className="flex justify-between items-center mb-1">
                 <span className="font-medium text-white">Attempt #{attempt.number}</span>
                 <span
-                  className={`px-2 py-1 text-xs rounded ${
-                    attempt.correct
+                  className={`px-2 py-1 text-xs rounded ${attempt.correct
                       ? "bg-green-900/50 text-green-400"
                       : "bg-red-900/50 text-red-400"
-                  }`}
+                    }`}
                 >
                   {attempt.correct ? "✓" : `✗ (${attempt.result})`}
                 </span>
