@@ -2,76 +2,40 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import Nav from '../../components/Nav';
+import axios from 'axios';
 
 const LiveMatches = () => {
   const [liveMatches, setLiveMatches] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Mock data for live matches
-  const mockMatches = [
-    {
-      id: 'match1',
-      player1: { name: 'MathWizard42', rating: 2450, avatar: 'M', country: '🇺🇸' },
-      player2: { name: 'AlgebraQueen', rating: 2380, avatar: 'A', country: '🇬🇧' },
-      problem: { title: '1 2 3 4 5 6', difficulty: 'Medium', points: 100 },
-      timeElapsed: '3:45PM',
-      moves: 12
-    },
-    {
-      id: 'match2',
-      player1: { name: 'PrimeSolver', rating: 2310, avatar: 'P', country: '🇩🇪' },
-      player2: { name: 'NumberNinja', rating: 2295, avatar: 'N', country: '🇯🇵' },
-      problem: { title: 'Prime Factorization', difficulty: 'Hard', points: 150 },
-      timeElapsed: '2:30PM',
-      moves: 8
-    },
-    {
-      id: 'match3',
-      player1: { name: 'GeoMaster', rating: 2250, avatar: 'G', country: '🇫🇷' },
-      player2: { name: 'CalcKing', rating: 2275, avatar: 'C', country: '🇨🇦' },
-      problem: { title: 'Matrix Operations', difficulty: 'Medium', points: 120 },
-      timeElapsed: '5:15PM',
-      moves: 15
-    },
-    {
-      id: 'match4',
-      player1: { name: 'TrigPro', rating: 2190, avatar: 'T', country: '🇦🇺' },
-      player2: { name: 'LogicLegend', rating: 2210, avatar: 'L', country: '🇮🇳' },
-      problem: { title: 'Trigonometric Identities', difficulty: 'Easy', points: 80 },
-      timeElapsed: '1:20PM',
-      moves: 5
-    },
-    {
-      id: 'match5',
-      player1: { name: 'DataDuke', rating: 2150, avatar: 'D', country: '🇧🇷' },
-      player2: { name: 'AlgoAce', rating: 2175, avatar: 'A', country: '🇰🇷' },
-      problem: { title: 'Binary Search', difficulty: 'Medium', points: 110 },
-      timeElapsed: '4:10PM',
-      moves: 10
-    },
-    {
-      id: 'match6',
-      player1: { name: 'TrigPro', rating: 2190, avatar: 'T', country: '🇦🇺' },
-      player2: { name: 'LogicLegend', rating: 2210, avatar: 'L', country: '🇮🇳' },
-      problem: { title: 'Trigonometric Identities', difficulty: 'Easy', points: 80 },
-      timeElapsed: '3:20PM',
-      moves: 7
-    }
-  ];
-
-  // Fetch live matches
-  const fetchLiveMatches = () => {
+  // Fetch live matches from backend API
+  const fetchLiveMatches = async () => {
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      // In a real app, you would shuffle or get new matches from your backend
-      setLiveMatches(mockMatches);
+    setError(null);
+    
+    try {
+      const response = await axios.get(`http://localhost:8080/api/match/getAllMatches`);
+      // Ensure we're working with an array
+      const matchesData = Array.isArray(response.data) ? response.data : 
+                         (response.data.matches || response.data.data || []);
+      console.log("Matches data:", matchesData); // Debug the response
+      setLiveMatches(matchesData);
       setIsLoading(false);
-    }, 800);
+    } catch (err) {
+      console.error("Error fetching live matches:", err);
+      setError("Failed to load live matches. Please try again.");
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
     fetchLiveMatches();
+    
+    // Optional: Set up polling to refresh matches periodically
+    const intervalId = setInterval(fetchLiveMatches, 30000); // Refresh every 30 seconds
+    
+    return () => clearInterval(intervalId); // Clean up on unmount
   }, []);
 
   return (
@@ -110,48 +74,70 @@ const LiveMatches = () => {
               className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full"
             />
           </div>
+        ) : error ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="text-center">
+              <p className="text-red-400 mb-4">{error}</p>
+              <button 
+                onClick={fetchLiveMatches}
+                className="px-4 py-2 bg-primary hover:bg-primary/80 rounded-lg transition-colors"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        ) : liveMatches.length === 0 ? (
+          <div className="flex justify-center items-center h-64">
+            <p className="text-gray-400">No live matches available at the moment.</p>
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {liveMatches.map((match) => (
+            {Array.isArray(liveMatches) && liveMatches.map((match) => (
               <motion.div
-                key={match.id}
+                key={match._id || match.id}
                 whileHover={{ y: -5 }}
                 className="bg-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-700 overflow-hidden shadow-lg"
               >
-                <Link to={`/spectmatch/${match.id}`} className="block">
+                <Link to={`/spectmatch/${match._id || match.id}`} className="block">
                   <div className="p-6">
                     {/* Players */}
                     <div className="flex justify-between items-center mb-6">
                       <div className="flex items-center">
                         <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center border-2 border-blue-500/30 mr-3">
-                          <span className="text-xl font-bold text-blue-400">{match.player1.avatar}</span>
+                          <span className="text-xl font-bold text-blue-400">
+                            {match.player1.avatar || match.player1.userName?.[0]?.toUpperCase() || 'P'}
+                          </span>
                         </div>
                         <div>
-                          <h3 className="text-white font-medium">@{match.player1.name}</h3>
+                          <h3 className="text-white font-medium">@{match.player1.userName || match.player1.name}</h3>
                           <div className="flex items-center text-sm text-gray-400">
                             <span>{match.player1.rating}</span>
                             <span className="mx-2">•</span>
-                            <span>{match.player1.country}</span>
+                            <span>{match.player1.country || '🌍'}</span>
                           </div>
                         </div>
                       </div>
 
                       <div className="text-center px-4">
                         <div className="text-xs text-gray-400 mb-1">Time</div>
-                        <div className="text-white font-mono">{match.timeElapsed}</div>
+                        <div className="text-white font-mono">
+                          {match.timeElapsed || new Date(match.startTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                        </div>
                       </div>
 
                       <div className="flex items-center text-right">
                         <div>
-                          <h3 className="text-white font-medium">@{match.player2.name}</h3>
+                          <h3 className="text-white font-medium">@{match.player2.userName || match.player2.name}</h3>
                           <div className="flex items-center justify-end text-sm text-gray-400">
-                            <span>{match.player2.country}</span>
+                            <span>{match.player2.country || '🌍'}</span>
                             <span className="mx-2">•</span>
                             <span>{match.player2.rating}</span>
                           </div>
                         </div>
                         <div className="w-12 h-12 rounded-full bg-purple-500/10 flex items-center justify-center border-2 border-purple-500/30 ml-3">
-                          <span className="text-xl font-bold text-purple-400">{match.player2.avatar}</span>
+                          <span className="text-xl font-bold text-purple-400">
+                            {match.player2.avatar || match.player2.userName?.[0]?.toUpperCase() || 'P'}
+                          </span>
                         </div>
                       </div>
                     </div>

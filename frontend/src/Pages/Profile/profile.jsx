@@ -47,6 +47,7 @@ const Profile = () => {
       dispatch(removeAuthUser());
       navigate("/");
     } catch (error) {
+      console.log("logout")
       toast.error(error.response.data.message);
     }
   };

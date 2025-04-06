@@ -1,119 +1,181 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import Nav from "../../components/Nav";
+import { useSelector } from "react-redux";
 import { io } from "socket.io-client";
-import { useSelector } from "react-redux"; // Or use context if you're not using Redux
+import Nav from "../../components/Nav";
 
 const socket = io("http://localhost:8080", {
   withCredentials: true,
   autoConnect: false,
 });
 
+const PlayerPanel = ({ user, isOpponent, isActive }) => (
+  <div className={`lg:w-1/4 flex flex-col gap-6 transition-opacity ${isActive ? 'opacity-100' : 'opacity-70'}`}>
+    <div className="bg-gray-800 rounded-xl p-6 border border-gray-700 relative">
+      {isActive && (
+        <div className="absolute -top-2 -right-2 bg-green-500 text-xs font-bold px-2 py-1 rounded-full animate-pulse">
+          Playing
+        </div>
+      )}
+      <div className="flex items-center mb-6">
+        <div className={`w-16 h-16 rounded-full ${isOpponent ? "bg-purple-600/20 border-purple-500/30" : "bg-blue-600/20 border-blue-500/30"} flex items-center justify-center border-2 mr-4`}>
+          <span className={`text-2xl font-bold ${isOpponent ? "text-purple-400" : "text-blue-400"}`}>
+            {user.avatar}
+          </span>
+        </div>
+        <div>
+          <h2 className="text-xl font-bold text-white">@{user.name}</h2>
+          <div className="text-gray-400">Rating: {user.rating}</div>
+        </div>
+      </div>
+      <h3 className="text-lg font-bold text-white mb-3">
+        {isOpponent ? "Opponent" : "Your"} Attempts
+      </h3>
+      {user?.attempts?.length > 0 ? (
+        <div className="space-y-3 max-h-64 overflow-y-auto pr-2">
+          {user.attempts.map((attempt) => (
+            <div
+              key={attempt.number}
+              className={`bg-gray-900/50 p-3 rounded-lg border ${attempt.correct ? "border-green-500/30" : "border-red-500/30"}`}
+            >
+              <div className="flex justify-between items-center mb-1">
+                <span className="font-medium text-white">Attempt #{attempt.number}</span>
+                <span
+                  className={`px-2 py-1 text-xs rounded ${attempt.correct ? "bg-green-900/50 text-green-400" : "bg-red-900/50 text-red-400"}`}
+                >
+                  {attempt.correct ? "✓" : `✗ (${attempt.result})`}
+                </span>
+              </div>
+              {attempt.expression && (
+                <div className="text-sm font-mono bg-gray-800 p-2 rounded mt-1 break-all">
+                  {attempt.expression}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-gray-400 italic">No attempts yet</div>
+      )}
+    </div>
+  </div>
+);
+
+const GameModal = ({ emoji, title, message, onConfirm, buttonText }) => (
+  <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+    <div className="bg-gray-800 rounded-xl p-6 max-w-md w-full border border-gray-700 text-center">
+      <div className="text-5xl mb-4">{emoji}</div>
+      <h3 className="text-2xl font-bold text-white mb-2">{title}</h3>
+      <p className="text-gray-300 mb-6">{message}</p>
+      <button
+        onClick={onConfirm}
+        className="bg-primary hover:bg-primary/80 text-white font-bold py-2 px-6 rounded-lg transition-colors"
+      >
+        {buttonText}
+      </button>
+    </div>
+  </div>
+);
+
 const Multiplayer = () => {
+  const { authUser } = useSelector((state) => state.user);
   const navigate = useNavigate();
   const location = useLocation();
-  const { authUser } = useSelector((state) => state.user); // Get from Redux
-  const [timeLeft, setTimeLeft] = useState(1 * 60); // 1-minute timer
+  const timerRef = useRef(null);
+
+  const [timeLeft, setTimeLeft] = useState(60);
   const [expression, setExpression] = useState("");
   const [currentNumberIndex, setCurrentNumberIndex] = useState(0);
   const [activeModal, setActiveModal] = useState(null);
   const [gameEnded, setGameEnded] = useState(false);
-  const [lastResult, setLastResult] = useState(null);
   const [problem, setProblem] = useState("");
   const [matchId, setMatchId] = useState(null);
-  // const [opponent, setOpponent] = useState(null);
-  useEffect(() => {
-    socket.on("match_ended", ({ matchId, reason, result }) => {
-      setGameEnded(true);
-      setActiveModal("timeUp");
-      console.log(`💥 Match ${matchId} ended: ${result} (${reason})`);
-    });
+  const [lastResult, setLastResult] = useState(null);
+  const [gameStatus, setGameStatus] = useState("waiting");
+  const [currentPlayer, setCurrentPlayer] = useState(null);
 
-    return () => {
-      socket.off("match_ended");
-    };
-  }, []);
-
-  useEffect(() => {
-    // If user was navigated here from matchmaking
-    if (location.state) {
-      setMatchId(location.state.matchId);
-      setProblem(location.state.problem);
-      setOpponent(location.state.opponent);
-    }
-
-    socket.on("match", (data) => {
-      setMatchId(data.matchId);
-      setProblem(data.problem);
-      setOpponent(data.opponent);
-    });
-
-    return () => {
-      socket.off("match");
-    };
-  }, [location.state]);
-
-  const [currentProblem] = useState({
-    title: problem,
-    description:
-      "Use operators [+,-,*,/,(,),^] to make the sequence equal 100 without changing number order.",
-  });
-
-  const [, setUser] = useState({
+  const [user, setUser] = useState({
+    id: authUser?._id || null,
     name: authUser?.userName || "You",
     rating: authUser?.rating || 2000,
-    avatar: authUser?.userName[0].toUpperCase() || "YO",
+    avatar: (authUser?.userName?.[0] || "Y").toUpperCase(),
     country: "🇮🇳",
     attempts: [],
   });
 
-  const [opponent, setOpponent] = useState(() => ({
-    name: location.state?.opponent?.userName || "Opponent",
-    rating: location.state?.opponent?.rating || 2000,
-    avatar: location.state?.opponent?.userName?.[0]?.toUpperCase() || "OP",
+  const [opponent, setOpponent] = useState({
+    id: null,
+    name: "Waiting...",
+    rating: 2000,
+    avatar: "?",
     country: "🇺🇸",
     attempts: [],
-  }));
-
-  const numbers = currentProblem.title
-    .split(" ")
-    .filter((char) => /\d/.test(char));
-  const operators = ["+", "-", "×", "÷", "^", "(", ")"];
+  });
 
   useEffect(() => {
-    if (timeLeft <= 0 && !gameEnded) {
-      endGame("timeUp");
-      return;
-    }
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => prev - 1);
+    socket.connect();
+    return () => {
+      socket.disconnect();
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (location.state) initializeMatch(location.state);
+
+    socket.on("matchFound", initializeMatch);
+    socket.on("opponentAttempt", (attempt) => {
+      setOpponent((prev) => ({ ...prev, attempts: [...prev.attempts, attempt] }));
+    });
+    socket.on("turnUpdate", ({ currentPlayerId }) => setCurrentPlayer(currentPlayerId));
+    socket.on("matchEnded", ({ winnerId }) => {
+      setGameEnded(true);
+      setGameStatus("ended");
+      if (timerRef.current) clearInterval(timerRef.current);
+      setActiveModal(winnerId === user.id ? "success" : winnerId === opponent.id ? "opponentWin" : "timeUp");
+    });
+
+    return () => {
+      socket.off("matchFound", initializeMatch);
+      socket.off("opponentAttempt");
+      socket.off("turnUpdate");
+      socket.off("matchEnded");
+    };
+  }, [location.state, user.id, opponent.id]);
+
+  const initializeMatch = (data) => {
+    if (!data) return;
+    setMatchId(data.matchId);
+    setProblem(data.problem || "");
+    setOpponent({
+      id: data.opponent?._id || null,
+      name: data.opponent?.userName || "Opponent",
+      rating: data.opponent?.rating || 2000,
+      avatar: (data.opponent?.userName?.[0] || "O").toUpperCase(),
+      country: "🇺🇸",
+      attempts: [],
+    });
+    setGameStatus("playing");
+    startTimer();
+  };
+
+  const startTimer = () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    setTimeLeft(60);
+    timerRef.current = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timerRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
     }, 1000);
-    return () => clearInterval(timer);
-  }, [timeLeft, gameEnded]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (!gameEnded) endGame("opponentWin");
-    }, 3 * 60 * 1000); // simulate opponent win
-    return () => clearTimeout(timer);
-  }, [gameEnded]);
-
-  const endGame = (result) => {
-    setGameEnded(true);
-    setActiveModal(result);
   };
 
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, "0")}:${secs
-      .toString()
-      .padStart(2, "0")}`;
-  };
-
-  const calculateCurrentResult = () => {
+  const calculateResult = () => {
     if (!expression) return null;
-    if (/(\d{2,})/.test(expression)) return "AdjacentDigits";
+    if (/\d{2,}/.test(expression)) return "AdjacentDigits";
     try {
       const formatted = expression.replace(/×/g, "*").replace(/÷/g, "/");
       const result = eval(formatted);
@@ -123,9 +185,14 @@ const Multiplayer = () => {
     }
   };
 
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
+
   const handleNextNumber = () => {
-    if (currentNumberIndex < numbers.length && !gameEnded) {
-      if (expression.length > 0 && /\d/.test(expression.slice(-1))) return;
+    if (currentNumberIndex < numbers.length && !gameEnded && (expression.length === 0 || !/\d/.test(expression.slice(-1)))) {
       setExpression((prev) => prev + numbers[currentNumberIndex]);
       setCurrentNumberIndex((prev) => prev + 1);
     }
@@ -150,22 +217,16 @@ const Multiplayer = () => {
   };
 
   const handleSubmit = () => {
-    if (gameEnded) return;
-
-    const result = calculateCurrentResult();
-
+    if (gameEnded || gameStatus !== "playing") return;
+    const result = calculateResult();
     if (result === "Invalid" || result === "AdjacentDigits") {
+      setLastResult(result === "AdjacentDigits" ? "Cannot have adjacent digits!" : "Invalid expression!");
       setActiveModal("wrongAnswer");
-      setLastResult(
-        result === "AdjacentDigits"
-          ? "Cannot have adjacent digits!"
-          : "Invalid expression!"
-      );
       return;
     }
 
     const newAttempt = {
-      number: authUser.attempts.length + 1,
+      number: user.attempts.length + 1,
       timestamp: formatTime(60 - timeLeft),
       expression,
       result,
@@ -173,264 +234,133 @@ const Multiplayer = () => {
     };
 
     setUser((prev) => ({ ...prev, attempts: [...prev.attempts, newAttempt] }));
+    socket.emit("playerAttempt", { matchId, attempt: newAttempt });
 
     if (result === 100) {
-      endGame("success");
-      setExpression("");
-      setCurrentNumberIndex(0);
+      socket.emit("playerWin", { matchId, playerId: user.id });
+      setGameEnded(true);
+      setActiveModal("success");
     } else {
+      setLastResult(`Result: ${result}`);
       setActiveModal("wrongAnswer");
-      setLastResult(result);
     }
+
+    setExpression("");
+    setCurrentNumberIndex(0);
   };
 
   const handleModalConfirm = () => {
     setActiveModal(null);
     if (["success", "opponentWin", "timeUp"].includes(activeModal)) {
-      navigate("/matchresult");
+      navigate("/matchresult", {
+        state: {
+          matchId,
+          problem,
+          userAttempts: user.attempts,
+          opponentAttempts: opponent.attempts,
+          result: activeModal === "success" ? "win" : "loss",
+        },
+      });
     }
   };
 
-  const currentResult = calculateCurrentResult();
+  const numbers = problem?.split(" ").filter((char) => /\d/.test(char)) || [];
+  const operators = ["+", "-", "×", "÷", "^", "(", ")"];
+  const currentResult = calculateResult();
 
   return (
     <div className="min-h-screen bg-dark relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-radial from-primary/30 via-secondary/20 to-dark"></div>
       <Nav />
+      <div className="container mx-auto px-4 py-8 relative z-10 flex flex-col lg:flex-row gap-6 max-w-7xl">
+        <PlayerPanel user={opponent} isOpponent isActive={currentPlayer === opponent.id && gameStatus === "playing"} />
 
-      <div className="relative z-10 container mx-auto px-4 py-8">
-        <div className="flex flex-col lg:flex-row gap-8 max-w-7xl mx-auto">
-          {/* Opponent Panel */}
-          <PlayerPanel user={opponent} isOpponent />
-
-          {/* Game Area */}
-          <div className="lg:w-2/4 flex flex-col gap-8">
-            <div className="bg-gray-800 rounded-lg p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-white">
-                  Sequence: {currentProblem.title}
-                </h2>
-                <div
-                  className={`text-2xl font-mono font-bold ${
-                    timeLeft < 60 ? "text-red-500" : "text-green-500"
-                  }`}
-                >
-                  {formatTime(timeLeft)}
-                </div>
-              </div>
-              <p className="text-gray-300">{currentProblem.description}</p>
+        <div className="lg:w-2/4 flex flex-col gap-6">
+          <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-white">Sequence: {problem || "Waiting for match..."}</h2>
+              <div className={`text-lg font-mono ${timeLeft < 10 ? "text-red-400" : "text-green-400"}`}>{formatTime(timeLeft)}</div>
             </div>
 
-            <div className="bg-gray-800 rounded-lg p-6">
-              <label className="block text-white font-medium mb-2">
-                Your Solution
-              </label>
-              <div className="my-2 p-4 border border-gray-700 rounded bg-gray-700 min-h-12 text-white font-mono text-xl">
-                {expression || "Start building your equation..."}
+            {gameStatus === "waiting" ? (
+              <div className="text-center py-8">
+                <div className="animate-pulse text-primary text-lg">Searching for opponent...</div>
               </div>
+            ) : (
+              <>
+                <p className="text-gray-300 mb-4">Use operators [+,-,*,/,(,),^] to make the sequence equal 100.</p>
 
-              {currentResult === "Invalid" && (
-                <ErrorMessage message="Invalid expression" />
-              )}
-              {currentResult === "AdjacentDigits" && (
-                <ErrorMessage message="Cannot have adjacent digits" />
-              )}
+                <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
+                  <div className="mb-2 text-white font-medium">Your Expression:</div>
+                  <div className="bg-gray-700 p-3 rounded mb-3 font-mono text-white min-h-12">
+                    {expression || "Start building..."}
+                    {currentResult && <div className="text-sm text-gray-400 mt-1">Current evaluation: {currentResult}</div>}
+                  </div>
 
-              <button
-                onClick={handleNextNumber}
-                disabled={
-                  currentNumberIndex >= numbers.length ||
-                  timeLeft <= 0 ||
-                  (expression.length > 0 && /\d/.test(expression.slice(-1)))
-                }
-                className="w-full py-3 mb-4 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium disabled:bg-gray-600 disabled:cursor-not-allowed"
-              >
-                {currentNumberIndex >= numbers.length
-                  ? "All numbers used"
-                  : `Add Next Number (${numbers[currentNumberIndex]})`}
-              </button>
-
-              <div className="grid grid-cols-4 gap-3 my-4">
-                {operators.map((op) => (
                   <button
-                    key={op}
-                    onClick={() => handleOperatorClick(op)}
-                    disabled={timeLeft <= 0}
-                    className="p-3 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={handleNextNumber}
+                    disabled={currentNumberIndex >= numbers.length || (expression.length > 0 && /\d/.test(expression.slice(-1))) || gameStatus !== "playing"}
+                    className={`w-full py-2 rounded text-white mb-3 ${currentNumberIndex >= numbers.length ? "bg-gray-600 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"}`}
                   >
-                    {op}
+                    {currentNumberIndex >= numbers.length ? "All numbers used" : `Add Next Number (${numbers[currentNumberIndex]})`}
                   </button>
-                ))}
-              </div>
 
-              <div className="flex gap-3 mt-4">
-                <button
-                  onClick={handleUndo}
-                  disabled={expression.length === 0 || timeLeft <= 0}
-                  className="flex-1 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Undo
-                </button>
-                <button
-                  onClick={handleClear}
-                  disabled={expression.length === 0 || timeLeft <= 0}
-                  className="flex-1 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Clear
-                </button>
-              </div>
-            </div>
+                  <div className="grid grid-cols-4 gap-2 mb-4">
+                    {operators.map((op) => (
+                      <button
+                        key={op}
+                        onClick={() => handleOperatorClick(op)}
+                        disabled={gameStatus !== "playing"}
+                        className="bg-primary/10 hover:bg-primary/20 text-primary py-2 rounded disabled:opacity-50"
+                      >
+                        {op}
+                      </button>
+                    ))}
+                  </div>
 
-            <button
-              onClick={handleSubmit}
-              disabled={
-                timeLeft <= 0 ||
-                !expression ||
-                currentResult === "Invalid" ||
-                currentResult === "AdjacentDigits"
-              }
-              className="bg-primary hover:bg-primary/80 text-white font-bold py-3 px-6 rounded-lg disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors"
-            >
-              {timeLeft <= 0 ? "Time Expired" : "Submit Solution"}
-            </button>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleUndo}
+                      disabled={expression.length === 0 || gameStatus !== "playing"}
+                      className="flex-1 bg-yellow-600 text-white py-2 rounded disabled:opacity-50"
+                    >
+                      Undo
+                    </button>
+                    <button
+                      onClick={handleClear}
+                      disabled={expression.length === 0 || gameStatus !== "playing"}
+                      className="flex-1 bg-red-600 text-white py-2 rounded disabled:opacity-50"
+                    >
+                      Clear
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={handleSubmit}
+                    disabled={expression.length === 0 || gameStatus !== "playing"}
+                    className="mt-4 w-full bg-green-600 text-white py-2 rounded disabled:opacity-50"
+                  >
+                    Submit
+                  </button>
+                </div>
+              </>
+            )}
           </div>
-
-          {/* User Panel */}
-          <PlayerPanel user={authUser} />
         </div>
+
+        <PlayerPanel user={user} isActive={currentPlayer === user.id && gameStatus === "playing"} />
       </div>
 
-      {/* Modals */}
-      {activeModal === "timeUp" && (
+      {activeModal && (
         <GameModal
-          emoji="⏱"
-          title="Time's Up!"
-          message="The time limit for this challenge has ended."
+          emoji={activeModal === "success" ? "🎉" : activeModal === "wrongAnswer" ? "❌" : activeModal === "opponentWin" ? "😞" : "⏰"}
+          title={activeModal === "success" ? "Correct!" : activeModal === "wrongAnswer" ? "Try Again" : activeModal === "opponentWin" ? "Opponent Won!" : "Time's Up"}
+          message={activeModal === "wrongAnswer" ? lastResult : activeModal === "opponentWin" ? "Better luck next time!" : ""}
           onConfirm={handleModalConfirm}
-          buttonText="View Match Stats"
-        />
-      )}
-      {activeModal === "success" && (
-        <GameModal
-          emoji="🎉"
-          title="Great Job!"
-          message="Your solution is correct! You've won this match."
-          onConfirm={handleModalConfirm}
-          buttonText="View Match Stats"
-        />
-      )}
-      {activeModal === "opponentWin" && (
-        <GameModal
-          emoji="😞"
-          title="Oops, Too Late!"
-          message="Your opponent solved it first! Better luck next time."
-          onConfirm={handleModalConfirm}
-          buttonText="View Match Stats"
-        />
-      )}
-      {activeModal === "wrongAnswer" && (
-        <GameModal
-          emoji="❌"
-          title="Incorrect Solution"
-          message={`Your answer equals ${lastResult}. Try again!`}
-          onConfirm={() => setActiveModal(null)}
-          buttonText="Try Again"
+          buttonText="Continue"
         />
       )}
     </div>
   );
 };
-
-// Player Panel Component
-const PlayerPanel = ({ user, isOpponent }) => (
-  <div className="lg:w-1/4 flex flex-col gap-6">
-    <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-      <div className="flex items-center mb-6">
-        <div
-          className={`w-16 h-16 rounded-full ${
-            isOpponent
-              ? "bg-purple-600/20 border-purple-500/30"
-              : "bg-blue-600/20 border-blue-500/30"
-          } flex items-center justify-center border-2 mr-4`}
-        >
-          <span
-            className={`text-2xl font-bold ${
-              isOpponent ? "text-purple-400" : "text-blue-400"
-            }`}
-          >
-            {user.avatar}
-          </span>
-        </div>
-        <div>
-          <h2 className="text-xl font-bold text-white">@{user.name}</h2>
-          <div className="text-gray-400">Rating: {user.rating}</div>
-        </div>
-      </div>
-
-      <h3 className="text-lg font-bold text-white mb-3">
-        {isOpponent ? "Opponent" : "Your"} Attempts
-      </h3>
-
-      {user?.attempts?.length > 0 ? (
-        <div className="space-y-3">
-          {user.attempts.map((attempt) => (
-            <div
-              key={attempt.number}
-              className={`bg-gray-900/50 p-3 rounded-lg border ${
-                attempt.correct ? "border-green-500/30" : "border-red-500/30"
-              }`}
-            >
-              <div className="flex justify-between items-center mb-1">
-                <span className="font-medium text-white">
-                  Attempt #{attempt.number}
-                </span>
-                <span
-                  className={`px-2 py-1 text-xs rounded ${
-                    attempt.correct
-                      ? "bg-green-900/50 text-green-400"
-                      : "bg-red-900/50 text-red-400"
-                  }`}
-                >
-                  {attempt.correct ? "✓" : `✗ (${attempt.result})`}
-                </span>
-              </div>
-              {attempt.expression && (
-                <div className="text-sm font-mono bg-gray-800 p-2 rounded mt-1 break-all">
-                  {attempt.expression}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="text-gray-400 italic">No attempts yet</div>
-      )}
-    </div>
-  </div>
-);
-
-// Modal Component
-const GameModal = ({ emoji, title, message, onConfirm, buttonText }) => (
-  <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
-    <div className="bg-gray-800 rounded-xl p-6 max-w-md w-full border border-gray-700 text-center">
-      <div className="text-5xl mb-4">{emoji}</div>
-      <h3 className="text-2xl font-bold text-white mb-2">{title}</h3>
-      <p className="text-gray-300 mb-6">{message}</p>
-      <button
-        onClick={onConfirm}
-        className="bg-primary hover:bg-primary/80 text-white font-bold py-2 px-6 rounded-lg transition-colors"
-      >
-        {buttonText}
-      </button>
-    </div>
-  </div>
-);
-
-// Reusable error message block
-const ErrorMessage = ({ message }) => (
-  <div className="mb-4 p-2 bg-gray-900 rounded text-center">
-    <span className="text-red-500 font-bold">{message}</span>
-  </div>
-);
 
 export default Multiplayer;

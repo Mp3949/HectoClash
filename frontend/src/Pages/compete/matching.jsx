@@ -92,40 +92,59 @@ const MatchmakingPage = () => {
       }, 2000);
     }
   };
-
   useEffect(() => {
     if (!socket) return;
+
+    // Store opponent info when match is found
     socket.on("matchFound", (data) => {
+      console.log(data);
       setMatchData(data);
       setActiveModes((prev) => ({
         ...prev,
         multiplayer: {
+          ...prev.multiplayer,
           loading: false,
           matched: true,
           opponent: {
             name: data.opponent.name,
             userName: data.opponent.userName,
             rating: data.opponent.rating,
-            avatar: data.opponent.userName[0].toUpperCase(),
+            avatar: data.opponent.avatar,
+            avatarColor: data.opponent.avatarColor,
             status: "started",
-            avatarColor: "bg-purple-600",
           },
         },
       }));
+    });
 
-      setTimeout(() => {
-        navigate(`/multiplayer?matchId=${data.matchId}`);
-        setActiveModes((prev) => ({
-          ...prev,
-          multiplayer: { loading: false, matched: false, opponent: null },
-        }));
-      }, 1000);
+    // Navigate only when match starts
+    socket.on("matchStarted", (data) => {
+      const { matchId, problem, player1, player2 } = data;
+
+      // We already have opponent info stored from matchFound
+      const opponent = matchData?.opponent;
+
+      navigate(`/multiplayer`);
+
+      // Reset state after navigation
+      setActiveModes((prev) => ({
+        ...prev,
+        multiplayer: { loading: false, matched: false, opponent: null },
+      }));
+    });
+
+    // Handle match ended
+    socket.on("match_ended", ({ reason, result }) => {
+      alert(`Match ended: ${reason} (${result})`);
+      navigate("/multiplayer");
     });
 
     return () => {
       socket.off("matchFound");
+      socket.off("matchStarted");
+      socket.off("match_ended");
     };
-  });
+  }, [authUser, matchData, navigate]);
 
   const cancelMatchmaking = (modeId) => {
     if (modeId === "multiplayer") {
