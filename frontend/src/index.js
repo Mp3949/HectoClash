@@ -17,22 +17,24 @@ ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <BrowserRouter>
       <Provider store={store}>
-        <SocketProvider>
-          <App />
-        </SocketProvider>
-        <ToastContainer
-          position="top-right"
-          autoClose={3000}
-          hideProgressBar={false}
-          newestOnTop={false}
-          closeOnClick
-          rtl={false}
-          pauseOnFocusLoss
-          draggable
-          pauseOnHover
-          theme="dark"
-          transition={Flip} // Now correctly imported
-        />
+        <PersistGate loading={null} persistor={persistor}>
+          <SocketProvider>
+            <App />
+          </SocketProvider>
+          <ToastContainer
+            position="top-right"
+            autoClose={3000}
+            hideProgressBar={false}
+            newestOnTop={false}
+            closeOnClick
+            rtl={false}
+            pauseOnFocusLoss
+            draggable
+            pauseOnHover
+            theme="dark"
+            transition={Flip} // Now correctly imported
+          />
+        </PersistGate>
       </Provider>
     </BrowserRouter>
   </React.StrictMode>

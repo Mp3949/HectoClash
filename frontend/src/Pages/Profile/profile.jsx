@@ -17,23 +17,23 @@ const Profile = () => {
   const totalGames = authUser?.stats?.gamesPlayed || 0;
   const wins = authUser?.stats?.wins || 0;
   const highestRating = authUser?.highestRating || 0;
-
+  
   // Sample user data
   // const user = {
-  //   id: "MathWizard42",
-  //   name: "Alex Johnson",
-  //   email: "alex.johnson@example.com",
-  //   rating: 2450,
-  //   rank: 15,
-  //   totalGames: 127,
-  //   wins: 89,
-  //   solutionsSubmitted: 215,
-  //   joinDate: "2023-05-15",
-  //   lastActive: "2024-01-20",
-  //   achievements: [
-  //     "Fast Solver (10 problems in <1 min)",
-  //     "Perfect Streak (5 wins in a row)",
-  //     "Top 20 Player",
+    //   id: "MathWizard42",
+    //   name: "Alex Johnson",
+    //   email: "alex.johnson@example.com",
+    //   rating: 2450,
+    //   rank: 15,
+    //   totalGames: 127,
+    //   wins: 89,
+    //   solutionsSubmitted: 215,
+    //   joinDate: "2023-05-15",
+    //   lastActive: "2024-01-20",
+    //   achievements: [
+      //     "Fast Solver (10 problems in <1 min)",
+      //     "Perfect Streak (5 wins in a row)",
+      //     "Top 20 Player",
   //   ],
   // };
 

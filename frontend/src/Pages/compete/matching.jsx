@@ -9,6 +9,7 @@ const MatchmakingPage = () => {
   const { authUser } = useSelector((state) => state.user);
   console.log("user", authUser);
   const navigate = useNavigate();
+
   const [activeModes, setActiveModes] = useState({
     training: { loading: false, matched: false },
     singleplayer: { loading: false, matched: false },
@@ -123,6 +124,7 @@ const MatchmakingPage = () => {
 
       // We already have opponent info stored from matchFound
       const opponent = matchData?.opponent;
+      console.log(opponent);
 
       navigate(`/multiplayer`);
 
@@ -182,8 +184,8 @@ const MatchmakingPage = () => {
         mode.id === "multiplayer"
           ? "bg-purple-600 hover:bg-purple-700"
           : mode.id === "training"
-          ? "bg-orange-600 hover:bg-orange-700"
-          : "bg-blue-600 hover:bg-blue-700",
+            ? "bg-orange-600 hover:bg-orange-700"
+            : "bg-blue-600 hover:bg-blue-700",
       disabled: false,
     };
   };
@@ -226,7 +228,7 @@ const MatchmakingPage = () => {
 
               <div className="relative">
                 {activeModes[gameModes[0].id].loading ||
-                activeModes[gameModes[0].id].matched ? (
+                  activeModes[gameModes[0].id].matched ? (
                   <AnimatePresence>
                     <motion.div
                       initial={{ opacity: 0, height: 0 }}
@@ -265,9 +267,8 @@ const MatchmakingPage = () => {
                 <button
                   onClick={() => handleModeSelect(gameModes[0])}
                   disabled={getButtonState(gameModes[0]).disabled}
-                  className={`w-full py-3 rounded-xl text-white font-medium transition-colors ${
-                    getButtonState(gameModes[0]).className
-                  }`}
+                  className={`w-full py-3 rounded-xl text-white font-medium transition-colors ${getButtonState(gameModes[0]).className
+                    }`}
                 >
                   {getButtonState(gameModes[0]).text}
                 </button>
@@ -301,7 +302,7 @@ const MatchmakingPage = () => {
 
               <div className="relative">
                 {activeModes[gameModes[1].id].loading ||
-                activeModes[gameModes[1].id].matched ? (
+                  activeModes[gameModes[1].id].matched ? (
                   <AnimatePresence>
                     <motion.div
                       initial={{ opacity: 0, height: 0 }}
@@ -340,9 +341,8 @@ const MatchmakingPage = () => {
                 <button
                   onClick={() => handleModeSelect(gameModes[1])}
                   disabled={getButtonState(gameModes[1]).disabled}
-                  className={`w-full py-3 rounded-xl text-white font-medium transition-colors ${
-                    getButtonState(gameModes[1]).className
-                  }`}
+                  className={`w-full py-3 rounded-xl text-white font-medium transition-colors ${getButtonState(gameModes[1]).className
+                    }`}
                 >
                   {getButtonState(gameModes[1]).text}
                 </button>
@@ -368,7 +368,7 @@ const MatchmakingPage = () => {
 
               <div className="relative">
                 {activeModes[gameModes[2].id].loading ||
-                activeModes[gameModes[2].id].matched ? (
+                  activeModes[gameModes[2].id].matched ? (
                   <AnimatePresence>
                     <motion.div
                       initial={{ opacity: 0, height: 0 }}
@@ -404,10 +404,9 @@ const MatchmakingPage = () => {
                         >
                           <div className="flex items-center">
                             <div
-                              className={`w-8 h-8 rounded-full ${
-                                activeModes[gameModes[2].id].opponent
+                              className={`w-8 h-8 rounded-full ${activeModes[gameModes[2].id].opponent
                                   .avatarColor
-                              } flex items-center justify-center mr-2`}
+                                } flex items-center justify-center mr-2`}
                             >
                               <span className="text-xs font-bold text-white">
                                 {activeModes[gameModes[2].id].opponent.avatar}
@@ -439,9 +438,8 @@ const MatchmakingPage = () => {
                 <button
                   onClick={() => handleModeSelect(gameModes[2])}
                   disabled={getButtonState(gameModes[2]).disabled}
-                  className={`w-full py-3 rounded-xl text-white font-medium transition-colors ${
-                    getButtonState(gameModes[2]).className
-                  }`}
+                  className={`w-full py-3 rounded-xl text-white font-medium transition-colors ${getButtonState(gameModes[2]).className
+                    }`}
                 >
                   {getButtonState(gameModes[2]).text}
                 </button>
