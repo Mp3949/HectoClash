@@ -48,7 +48,7 @@ const MatchmakingPage = () => {
       button: "Play Solo",
       redirect: "/singleplayer",
     },
-  ];
+  ];  
   useEffect(() => {
     if (!socket.connected) {
       socket.connect();
