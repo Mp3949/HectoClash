@@ -11,10 +11,7 @@ export async function getValidHectoDigits() {
     const solutions = solveHectoForDigits(digits); // ✅ Checks only in-order sequences now
     if (solutions.length > 0) {
       console.log(`✅ Found valid sequence after ${attempts} attempts:`, digits);
-      return {
-        digits: digits.join(""), // 👈 Return as string for storage
-        solutions
-      };
+      return digits.join("");
     }
 
     // 🚫 Prevent infinite loop if logic breaks

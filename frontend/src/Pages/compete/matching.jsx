@@ -5,11 +5,9 @@ import { useNavigate } from "react-router-dom";
 import Nav from "../../components/Nav";
 import { useSelector } from "react-redux";
 
-
-
 const MatchmakingPage = () => {
-  const {authUser} = useSelector((state) => state.user);
-  console.log("user",authUser);
+  const { authUser } = useSelector((state) => state.user);
+  console.log("user", authUser);
   const navigate = useNavigate();
   const [activeModes, setActiveModes] = useState({
     training: { loading: false, matched: false },
@@ -17,12 +15,7 @@ const MatchmakingPage = () => {
     multiplayer: { loading: false, matched: false, opponent: null },
   });
   const [matchData, setMatchData] = useState(null);
-  useEffect(() => {
-    if (!socket.connected) {
-      socket.connect();
-      console.log("Socket connected manually");
-    }
-  }, []);
+
   const gameModes = [
     {
       id: "multiplayer",
@@ -55,19 +48,27 @@ const MatchmakingPage = () => {
       redirect: "/singleplayer",
     },
   ];
-
- 
+  useEffect(() => {
+    if (!socket.connected) {
+      socket.connect();
+      console.log("Socket connected manually");
+    }
+  }, []);
 
   const handleModeSelect = (mode) => {
-    console.log("Mode selected: ",mode);
+    console.log("Mode selected: ", mode);
     if (mode.id === "multiplayer") {
       setActiveModes((prev) => ({
         ...prev,
         multiplayer: { ...prev.multiplayer, loading: true },
       }));
-    
-      socket.emit("findMatch", { userId: authUser._id });
-      console.log("id",authUser._id)
+
+      if (authUser?._id) {
+        socket.emit("join_matchmaking", { userId: authUser._id }); // ✅ matches backend listener
+        console.log("🧠 Finding match for ID:", authUser._id);
+      } else {
+        console.warn("⚠️ User not authenticated");
+      }
     } else {
       setActiveModes((prev) => ({
         ...prev,

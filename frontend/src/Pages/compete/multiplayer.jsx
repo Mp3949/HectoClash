@@ -6,25 +6,35 @@ import { useSelector } from "react-redux"; // Or use context if you're not using
 
 const socket = io("http://localhost:8080", {
   withCredentials: true,
-  autoConnect: false
+  autoConnect: false,
 });
 
 const Multiplayer = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const user = useSelector((state) => state.auth.user); // Get from Redux
+  const { authUser } = useSelector((state) => state.user); // Get from Redux
   const [timeLeft, setTimeLeft] = useState(1 * 60); // 1-minute timer
   const [expression, setExpression] = useState("");
   const [currentNumberIndex, setCurrentNumberIndex] = useState(0);
   const [activeModal, setActiveModal] = useState(null);
   const [gameEnded, setGameEnded] = useState(false);
   const [lastResult, setLastResult] = useState(null);
-  const [problem, setProblem] = useState('');
+  const [problem, setProblem] = useState("");
   const [matchId, setMatchId] = useState(null);
   // const [opponent, setOpponent] = useState(null);
+  useEffect(() => {
+    socket.on("match_ended", ({ matchId, reason, result }) => {
+      setGameEnded(true);
+      setActiveModal("timeUp");
+      console.log(`💥 Match ${matchId} ended: ${result} (${reason})`);
+    });
+
+    return () => {
+      socket.off("match_ended");
+    };
+  }, []);
 
   useEffect(() => {
-     
     // If user was navigated here from matchmaking
     if (location.state) {
       setMatchId(location.state.matchId);
@@ -50,21 +60,24 @@ const Multiplayer = () => {
   });
 
   const [, setUser] = useState({
-    name: user?.username || "You",
-    rating: user?.rating || 2000,
-    avatar: user?.username?.slice(0, 2).toUpperCase() || "YO",
+    name: authUser?.userName || "You",
+    rating: authUser?.rating || 2000,
+    avatar: authUser?.userName[0].toUpperCase() || "YO",
     country: "🇮🇳",
     attempts: [],
   });
 
-  const [opponent,setOpponent] = useState({
-    name: opponent?.username || "Opponent",
-    rating: opponent?.rating || 2000,
-    avatar: opponent?.username?.slice(0, 2).toUpperCase() || "OP",
+  const [opponent, setOpponent] = useState(() => ({
+    name: location.state?.opponent?.userName || "Opponent",
+    rating: location.state?.opponent?.rating || 2000,
+    avatar: location.state?.opponent?.userName?.[0]?.toUpperCase() || "OP",
     country: "🇺🇸",
     attempts: [],
-  });
-  const numbers = currentProblem.title.split(" ").filter((char) => /\d/.test(char));
+  }));
+
+  const numbers = currentProblem.title
+    .split(" ")
+    .filter((char) => /\d/.test(char));
   const operators = ["+", "-", "×", "÷", "^", "(", ")"];
 
   useEffect(() => {
@@ -93,7 +106,9 @@ const Multiplayer = () => {
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+    return `${mins.toString().padStart(2, "0")}:${secs
+      .toString()
+      .padStart(2, "0")}`;
   };
 
   const calculateCurrentResult = () => {
@@ -141,12 +156,16 @@ const Multiplayer = () => {
 
     if (result === "Invalid" || result === "AdjacentDigits") {
       setActiveModal("wrongAnswer");
-      setLastResult(result === "AdjacentDigits" ? "Cannot have adjacent digits!" : "Invalid expression!");
+      setLastResult(
+        result === "AdjacentDigits"
+          ? "Cannot have adjacent digits!"
+          : "Invalid expression!"
+      );
       return;
     }
 
     const newAttempt = {
-      number: user.attempts.length + 1,
+      number: authUser.attempts.length + 1,
       timestamp: formatTime(60 - timeLeft),
       expression,
       result,
@@ -191,7 +210,11 @@ const Multiplayer = () => {
                 <h2 className="text-xl font-bold text-white">
                   Sequence: {currentProblem.title}
                 </h2>
-                <div className={`text-2xl font-mono font-bold ${timeLeft < 60 ? "text-red-500" : "text-green-500"}`}>
+                <div
+                  className={`text-2xl font-mono font-bold ${
+                    timeLeft < 60 ? "text-red-500" : "text-green-500"
+                  }`}
+                >
                   {formatTime(timeLeft)}
                 </div>
               </div>
@@ -199,7 +222,9 @@ const Multiplayer = () => {
             </div>
 
             <div className="bg-gray-800 rounded-lg p-6">
-              <label className="block text-white font-medium mb-2">Your Solution</label>
+              <label className="block text-white font-medium mb-2">
+                Your Solution
+              </label>
               <div className="my-2 p-4 border border-gray-700 rounded bg-gray-700 min-h-12 text-white font-mono text-xl">
                 {expression || "Start building your equation..."}
               </div>
@@ -271,7 +296,7 @@ const Multiplayer = () => {
           </div>
 
           {/* User Panel */}
-          <PlayerPanel user={user} />
+          <PlayerPanel user={authUser} />
         </div>
       </div>
 
@@ -322,10 +347,17 @@ const PlayerPanel = ({ user, isOpponent }) => (
     <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
       <div className="flex items-center mb-6">
         <div
-          className={`w-16 h-16 rounded-full ${isOpponent ? "bg-purple-600/20 border-purple-500/30" : "bg-blue-600/20 border-blue-500/30"
-            } flex items-center justify-center border-2 mr-4`}
+          className={`w-16 h-16 rounded-full ${
+            isOpponent
+              ? "bg-purple-600/20 border-purple-500/30"
+              : "bg-blue-600/20 border-blue-500/30"
+          } flex items-center justify-center border-2 mr-4`}
         >
-          <span className={`text-2xl font-bold ${isOpponent ? "text-purple-400" : "text-blue-400"}`}>
+          <span
+            className={`text-2xl font-bold ${
+              isOpponent ? "text-purple-400" : "text-blue-400"
+            }`}
+          >
             {user.avatar}
           </span>
         </div>
@@ -339,21 +371,25 @@ const PlayerPanel = ({ user, isOpponent }) => (
         {isOpponent ? "Opponent" : "Your"} Attempts
       </h3>
 
-      {user.attempts.length > 0 ? (
+      {user?.attempts?.length > 0 ? (
         <div className="space-y-3">
           {user.attempts.map((attempt) => (
             <div
               key={attempt.number}
-              className={`bg-gray-900/50 p-3 rounded-lg border ${attempt.correct ? "border-green-500/30" : "border-red-500/30"
-                }`}
+              className={`bg-gray-900/50 p-3 rounded-lg border ${
+                attempt.correct ? "border-green-500/30" : "border-red-500/30"
+              }`}
             >
               <div className="flex justify-between items-center mb-1">
-                <span className="font-medium text-white">Attempt #{attempt.number}</span>
+                <span className="font-medium text-white">
+                  Attempt #{attempt.number}
+                </span>
                 <span
-                  className={`px-2 py-1 text-xs rounded ${attempt.correct
+                  className={`px-2 py-1 text-xs rounded ${
+                    attempt.correct
                       ? "bg-green-900/50 text-green-400"
                       : "bg-red-900/50 text-red-400"
-                    }`}
+                  }`}
                 >
                   {attempt.correct ? "✓" : `✗ (${attempt.result})`}
                 </span>
