@@ -1,6 +1,6 @@
 import express from "express";
 import {
-  createOrJoinMatch,
+  // createOrJoinMatch,
   submitAnswer,
   getAllMatches,
   getSingleMatch,
@@ -9,7 +9,7 @@ import isAuthenticated from "../middleware/isAuthenticated.js";
 
 const router = express.Router();
 
-router.route("/createOrJoin").post(isAuthenticated, createOrJoinMatch);
+// router.route("/createOrJoin").post(isAuthenticated, createOrJoinMatch);
 router.route("/submitAnswer").post(isAuthenticated, submitAnswer);
 router.route("/getAllMatches").get(getAllMatches);
 

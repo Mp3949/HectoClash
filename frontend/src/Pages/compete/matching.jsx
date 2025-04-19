@@ -1,21 +1,47 @@
 import React, { useEffect, useState } from "react";
-import socket from "../../socket/socket.js";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import Nav from "../../components/Nav";
 import { useSelector } from "react-redux";
+import socket from "../../socket/socket.js";
 
 const MatchmakingPage = () => {
   const { authUser } = useSelector((state) => state.user);
-  console.log("user", authUser);
+  // console.log("user", authUser);
   const navigate = useNavigate();
-
+  const [matchId, setMatchId] = useState(null);
+  const [countDown, setCountdown] = useState(0);
+  const [opponent, setOpponent] = useState(null);
   const [activeModes, setActiveModes] = useState({
     training: { loading: false, matched: false },
     singleplayer: { loading: false, matched: false },
     multiplayer: { loading: false, matched: false, opponent: null },
   });
-  const [matchData, setMatchData] = useState(null);
+  useEffect(() => {
+    if (!socket) return;
+
+    // 👉 Explicitly connect
+    if (!socket.connected) {
+      socket.connect();
+      console.log("🔌 Attempting to connect socket...");
+    }
+
+    const onConnect = () => {
+      console.log("✅ Socket connected!", socket.id);
+    };
+
+    const onDisconnect = () => {
+      console.log("🔌 Socket disconnected.");
+    };
+
+    socket.on("connect", onConnect);
+    socket.on("disconnect", onDisconnect);
+
+    return () => {
+      socket.off("connect", onConnect);
+      socket.off("disconnect", onDisconnect);
+    };
+  }, []);
 
   const gameModes = [
     {
@@ -48,29 +74,23 @@ const MatchmakingPage = () => {
       button: "Play Solo",
       redirect: "/singleplayer",
     },
-  ];  
-  useEffect(() => {
-    if (!socket.connected) {
-      socket.connect();
-      console.log("Socket connected manually");
-    }
-  }, []);
+  ];
 
+  // Handle matchmaking for multiplayer
   const handleModeSelect = (mode) => {
-    console.log("Mode selected: ", mode);
+    // console.log("Mode selected: ", mode);
+
     if (mode.id === "multiplayer") {
       setActiveModes((prev) => ({
         ...prev,
         multiplayer: { ...prev.multiplayer, loading: true },
       }));
 
-      if (authUser?._id) {
-        socket.emit("join_matchmaking", { userId: authUser._id }); // ✅ matches backend listener
-        console.log("🧠 Finding match for ID:", authUser._id);
-      } else {
-        console.warn("⚠️ User not authenticated");
-      }
+      // Emit socket event to join the queue for multiplayer match
+      // console.log("Emitting joinQueue");
+      socket.emit("joinQueue", authUser); // Emit the event to join the queue
     } else {
+      // Handle other modes (e.g., singleplayer or training)
       setActiveModes((prev) => ({
         ...prev,
         [mode.id]: { loading: true, matched: true },
@@ -82,77 +102,60 @@ const MatchmakingPage = () => {
           ...prev,
           [mode.id]: { loading: false, matched: true },
         }));
-
-        setTimeout(() => {
-          navigate(mode.redirect);
-          setActiveModes((prev) => ({
-            ...prev,
-            multiplayer: { loading: false, matched: true, opponent: null },
-          }));
-        }, 2000);
-      }, 2000);
+      }, 2000); // Delay the navigation by 2 seconds
     }
   };
   useEffect(() => {
-    if (!socket) return;
-
-    // Store opponent info when match is found
-    socket.on("matchFound", (data) => {
-      console.log(data);
-      setMatchData(data);
+    socket.on("matchStart", ( data ) => {
+      setOpponent(data.opponent);
+      setMatchId(data.matchId);
+      navigate(`/multiplayer/${data.matchId}`, { state: { matchData: data } });
       setActiveModes((prev) => ({
         ...prev,
-        multiplayer: {
-          ...prev.multiplayer,
-          loading: false,
-          matched: true,
-          opponent: {
-            name: data.opponent.name,
-            userName: data.opponent.userName,
-            rating: data.opponent.rating,
-            avatar: data.opponent.avatar,
-            avatarColor: data.opponent.avatarColor,
-            status: "started",
-          },
-        },
+        multiplayer: { loading: false, matched: true },
       }));
+      setCountdown(3);
+      const countdownInterval = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(countdownInterval);
+            navigate(`/multiplayer/${data.matchId}`);
+          }
+          return prev - 1;
+        });
+      }, 1000);
     });
 
-    // Navigate only when match starts
-    socket.on("matchStarted", (data) => {
-      const { matchId, problem, player1, player2 } = data;
+    socket.on("countdown", (count) => {
+      setCountdown(count);
+    });
 
-      // We already have opponent info stored from matchFound
-      const opponent = matchData?.opponent;
-      console.log(opponent);
-
-      navigate(`/multiplayer`);
-
-      // Reset state after navigation
+    socket.on("opponent_disconnected", () => {
+      alert("Your opponent has disconnected. Returning to the main menu.");
       setActiveModes((prev) => ({
         ...prev,
-        multiplayer: { loading: false, matched: false, opponent: null },
+        multiplayer: { loading: false, matched: false },
       }));
+      navigate("/home"); // Or wherever you want to redirect the user.
     });
 
-    // Handle match ended
-    socket.on("match_ended", ({ reason, result }) => {
-      alert(`Match ended: ${reason} (${result})`);
-      navigate("/multiplayer");
+    socket.on("error", (error) => {
+      alert(`Error: ${error.message}`);
+      setActiveModes((prev) => ({
+        ...prev,
+        multiplayer: { loading: false, matched: false },
+      }));
     });
 
     return () => {
-      socket.off("matchFound");
-      socket.off("matchStarted");
-      socket.off("match_ended");
+      socket.off("matchStart");
+      socket.off("countdown");
+      socket.off("opponent_disconnected");
+      socket.off("error");
     };
-  }, [authUser, matchData, navigate]);
+  }, [authUser, navigate]);
 
   const cancelMatchmaking = (modeId) => {
-    if (modeId === "multiplayer") {
-      socket.emit("cancelMatchmaking", { userId: authUser._id });
-    }
-
     setActiveModes((prev) => ({
       ...prev,
       [modeId]: { loading: false, matched: false, opponent: null },
@@ -184,8 +187,8 @@ const MatchmakingPage = () => {
         mode.id === "multiplayer"
           ? "bg-purple-600 hover:bg-purple-700"
           : mode.id === "training"
-            ? "bg-orange-600 hover:bg-orange-700"
-            : "bg-blue-600 hover:bg-blue-700",
+          ? "bg-orange-600 hover:bg-orange-700"
+          : "bg-blue-600 hover:bg-blue-700",
       disabled: false,
     };
   };
@@ -228,7 +231,7 @@ const MatchmakingPage = () => {
 
               <div className="relative">
                 {activeModes[gameModes[0].id].loading ||
-                  activeModes[gameModes[0].id].matched ? (
+                activeModes[gameModes[0].id].matched ? (
                   <AnimatePresence>
                     <motion.div
                       initial={{ opacity: 0, height: 0 }}
@@ -267,8 +270,9 @@ const MatchmakingPage = () => {
                 <button
                   onClick={() => handleModeSelect(gameModes[0])}
                   disabled={getButtonState(gameModes[0]).disabled}
-                  className={`w-full py-3 rounded-xl text-white font-medium transition-colors ${getButtonState(gameModes[0]).className
-                    }`}
+                  className={`w-full py-3 rounded-xl text-white font-medium transition-colors ${
+                    getButtonState(gameModes[0]).className
+                  }`}
                 >
                   {getButtonState(gameModes[0]).text}
                 </button>
@@ -302,7 +306,7 @@ const MatchmakingPage = () => {
 
               <div className="relative">
                 {activeModes[gameModes[1].id].loading ||
-                  activeModes[gameModes[1].id].matched ? (
+                activeModes[gameModes[1].id].matched ? (
                   <AnimatePresence>
                     <motion.div
                       initial={{ opacity: 0, height: 0 }}
@@ -341,8 +345,9 @@ const MatchmakingPage = () => {
                 <button
                   onClick={() => handleModeSelect(gameModes[1])}
                   disabled={getButtonState(gameModes[1]).disabled}
-                  className={`w-full py-3 rounded-xl text-white font-medium transition-colors ${getButtonState(gameModes[1]).className
-                    }`}
+                  className={`w-full py-3 rounded-xl text-white font-medium transition-colors ${
+                    getButtonState(gameModes[1]).className
+                  }`}
                 >
                   {getButtonState(gameModes[1]).text}
                 </button>
@@ -368,7 +373,7 @@ const MatchmakingPage = () => {
 
               <div className="relative">
                 {activeModes[gameModes[2].id].loading ||
-                  activeModes[gameModes[2].id].matched ? (
+                activeModes[gameModes[2].id].matched ? (
                   <AnimatePresence>
                     <motion.div
                       initial={{ opacity: 0, height: 0 }}
@@ -404,9 +409,10 @@ const MatchmakingPage = () => {
                         >
                           <div className="flex items-center">
                             <div
-                              className={`w-8 h-8 rounded-full ${activeModes[gameModes[2].id].opponent
+                              className={`w-8 h-8 rounded-full ${
+                                activeModes[gameModes[2].id].opponent
                                   .avatarColor
-                                } flex items-center justify-center mr-2`}
+                              } flex items-center justify-center mr-2`}
                             >
                               <span className="text-xs font-bold text-white">
                                 {activeModes[gameModes[2].id].opponent.avatar}
@@ -438,8 +444,9 @@ const MatchmakingPage = () => {
                 <button
                   onClick={() => handleModeSelect(gameModes[2])}
                   disabled={getButtonState(gameModes[2]).disabled}
-                  className={`w-full py-3 rounded-xl text-white font-medium transition-colors ${getButtonState(gameModes[2]).className
-                    }`}
+                  className={`w-full py-3 rounded-xl text-white font-medium transition-colors ${
+                    getButtonState(gameModes[2]).className
+                  }`}
                 >
                   {getButtonState(gameModes[2]).text}
                 </button>

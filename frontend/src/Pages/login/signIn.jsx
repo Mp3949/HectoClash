@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
@@ -14,6 +14,14 @@ const SignIn = ({ onClose, onSwitchToSignUp, onLoginSuccess }) => {
     email: "",
     password: "",
   });
+  const [loggedIn, setLoggedIn] = useState(false);
+
+  useEffect(() => {
+    if (user.success && !loggedIn) {
+      console.log("User logged in successfully", user);
+      setLoggedIn(true);
+    }
+  }, [user, loggedIn]);
 
   const submitHandler = async (e) => {
     e.preventDefault();
@@ -39,15 +47,16 @@ const SignIn = ({ onClose, onSwitchToSignUp, onLoginSuccess }) => {
       if (res.data.success) {
         toast.success("Login successful!");
         // console.log(res);
-        dispatch(setAuthUser(res.data));// 🔹 Dispatch login action
+        dispatch(setAuthUser(res.data)); // 🔹 Dispatch login action
         onLoginSuccess(res.data.user);
         onClose(); // 🔹 Close modal
         navigate("/"); // 🔹 Redirect after login
       }
-      
     } catch (err) {
       console.error("Login error:", err.response?.data);
-      toast.error(err.response?.data?.message || "Login failed! Check your credentials.");
+      toast.error(
+        err.response?.data?.message || "Login failed! Check your credentials."
+      );
     } finally {
       setLoading(false); // 🔹 Stop loading
     }
@@ -60,7 +69,10 @@ const SignIn = ({ onClose, onSwitchToSignUp, onLoginSuccess }) => {
       <div className="bg-[#0f172a] p-8 rounded-2xl w-[400px] shadow-xl border border-primary/20">
         <div className="flex items-center justify-between mb-8">
           <h2 className="text-xl font-semibold text-white">Sign In</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-primary transition-colors p-1">
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-primary transition-colors p-1"
+          >
             ✕
           </button>
         </div>
@@ -94,7 +106,11 @@ const SignIn = ({ onClose, onSwitchToSignUp, onLoginSuccess }) => {
           <button
             type="submit"
             disabled={loading}
-            className={`w-full ${loading ? "bg-gray-600 cursor-not-allowed" : "bg-primary hover:bg-primary/70 active:bg-primary/80"} text-white py-2.5 rounded-xl mb-4 transition-colors font-medium`}
+            className={`w-full ${
+              loading
+                ? "bg-gray-600 cursor-not-allowed"
+                : "bg-primary hover:bg-primary/70 active:bg-primary/80"
+            } text-white py-2.5 rounded-xl mb-4 transition-colors font-medium`}
           >
             {loading ? "Signing In..." : "SIGN IN"}
           </button>
@@ -102,7 +118,10 @@ const SignIn = ({ onClose, onSwitchToSignUp, onLoginSuccess }) => {
 
         <p className="text-center text-sm text-gray-400">
           New user?{" "}
-          <button onClick={onSwitchToSignUp} className="text-primary hover:text-primary/90 hover:underline transition-colors">
+          <button
+            onClick={onSwitchToSignUp}
+            className="text-primary hover:text-primary/90 hover:underline transition-colors"
+          >
             Sign up here
           </button>
         </p>

@@ -71,7 +71,7 @@ const Nav = () => {
 
   const navLinks = [
     { name: "Home", path: "/", requiresAuth: false },
-    { name: "Play", path: "/play", requiresAuth: true },
+    { name: "Play", path: "/play", requiresAuth: true  },
     { name: "Leaderboard", path: "/leaderboard", requiresAuth: true },
     { name: "Spectator Mode", path: "/livematches", requiresAuth: true },
     { name: "Profile", path: "/profile", requiresAuth: true, mobileOnly: true },

@@ -1,14 +1,8 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
-import { io } from "socket.io-client";
 import Nav from "../../components/Nav";
-
-
-const socket = io("http://localhost:8080", {
-  withCredentials: true,
-  autoConnect: false,
-});
+import socket from "../../socket/socket.js";
 
 const PlayerPanel = ({ user, opponent, isOpponent, isActive }) => {
   const player = isOpponent ? opponent : user;
@@ -142,55 +136,37 @@ const Multiplayer = () => {
   const [opponent, setOpponent] = useState({});
 
   useEffect(() => {
-    socket.connect();
+    if (location.state?.matchData) {
+      // console.log("data", location.state.matchData);
+      initializeMatch(location.state.matchData);
+    }
+  }, [location.state]);
+  useEffect(() => {
+    if (!socket) return;
+
+    // Explicitly connect
+    if (!socket.connected) {
+      socket.connect();
+    }
+
+    const onConnect = () => {};
+
+    const onDisconnect = () => {};
+
+    socket.on("connect", onConnect);
+    socket.on("disconnect", onDisconnect);
+
     return () => {
-      socket.disconnect();
-      if (timerRef.current) clearInterval(timerRef.current);
+      socket.off("connect", onConnect);
+      socket.off("disconnect", onDisconnect);
     };
   }, []);
 
-  useEffect(() => {
-    if (location.state) {
-      initializeMatch(location.state);
-      console.log("intialize");
-    }
-
-    socket.on("matchFound", initializeMatch);
-    // socket.on("")
-    socket.on("opponentAttempt", (attempt) => {
-      setOpponent((prev) => ({
-        ...prev,
-        attempts: [...prev.attempts, attempt],
-      }));
-    });
-    socket.on("turnUpdate", ({ currentPlayerId }) =>
-      setCurrentPlayer(currentPlayerId)
-    );
-    socket.on("matchEnded", ({ winnerId }) => {
-      setGameEnded(true);
-      setGameStatus("ended");
-      if (timerRef.current) clearInterval(timerRef.current);
-      setActiveModal(
-        winnerId === user.id
-          ? "success"
-          : winnerId === opponent.id
-          ? "opponentWin"
-          : "timeUp"
-      );
-    });
-
-    return () => {
-      socket.off("matchFound", initializeMatch);
-      socket.off("opponentAttempt");
-      socket.off("turnUpdate");
-      socket.off("matchEnded");
-    };
-  }, [location.state, user.id, opponent.id]);
-
   const initializeMatch = (data) => {
-    console.log(data);
+    // console.log("matchd", data.matchId);
+    console.log("Problem", data.problem);
     setMatchId(data.matchId);
-    setProblem(data.problem);
+    setProblem(data.problem); // Replace with actual problem ID or content
     setOpponent({
       name: data.opponent.userName,
       rating: data.opponent.rating,
@@ -234,15 +210,30 @@ const Multiplayer = () => {
       .toString()
       .padStart(2, "0")}`;
   };
-
   const handleNextNumber = () => {
+    console.log("handleNextNumber function called");
+
+    console.log({
+      currentNumberIndex,
+      numbersLength: numbers.length,
+      gameEnded,
+      expressionLength: expression.length,
+      lastCharIsNumber: /\d/.test(expression.slice(-1)),
+      gameStatus,
+    });
+
     if (
       currentNumberIndex < numbers.length &&
       !gameEnded &&
       (expression.length === 0 || !/\d/.test(expression.slice(-1)))
     ) {
-      setExpression((prev) => prev + numbers[currentNumberIndex]);
+      setExpression((prev) => {
+        console.log("Updating expression", prev + numbers[currentNumberIndex]);
+        return prev + numbers[currentNumberIndex];
+      });
       setCurrentNumberIndex((prev) => prev + 1);
+    } else {
+      console.log("Not allowed to insert digit right now");
     }
   };
 
@@ -286,10 +277,8 @@ const Multiplayer = () => {
     };
 
     setUser((prev) => ({ ...prev, attempts: [...prev.attempts, newAttempt] }));
-    socket.emit("playerAttempt", { matchId, attempt: newAttempt });
 
     if (result === 100) {
-      socket.emit("playerWin", { matchId, playerId: user.id });
       setGameEnded(true);
       setActiveModal("success");
     } else {
@@ -315,8 +304,15 @@ const Multiplayer = () => {
       });
     }
   };
+  const numbers = useMemo(() => {
+    if (!problem) return [];
+    return problem.split("").filter((char) => /^\d$/.test(char));
+  }, [problem]);
 
-  const numbers = problem?.split(" ").filter((char) => /\d/.test(char)) || [];
+  useEffect(() => {
+    console.log("Numbers", numbers);
+  }, [numbers]);
+
   const operators = ["+", "-", "×", "÷", "^", "(", ")"];
   const currentResult = calculateResult();
 
@@ -325,16 +321,17 @@ const Multiplayer = () => {
       <Nav />
       <div className="container mx-auto px-4 py-8 relative z-10 flex flex-col lg:flex-row gap-6 max-w-7xl">
         <PlayerPanel
-          user={opponent}
-          isOpponent
-          isActive={currentPlayer === opponent.id && gameStatus === "playing"}
+          user={user}
+          opponent={opponent}
+          isOpponent={true}
+          isActive={true}
         />
 
         <div className="lg:w-2/4 flex flex-col gap-6">
           <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold text-white">
-                Sequence:{problem}
+                Sequence: {problem}
               </h2>
               <div
                 className={`text-lg font-mono ${
@@ -363,7 +360,10 @@ const Multiplayer = () => {
               </div>
 
               <button
-                onClick={handleNextNumber}
+                onClick={() => {
+                  console.log("Add Next button clicked");
+                  handleNextNumber();
+                }}
                 disabled={
                   currentNumberIndex >= numbers.length ||
                   (expression.length > 0 && /\d/.test(expression.slice(-1))) ||
@@ -423,7 +423,9 @@ const Multiplayer = () => {
 
         <PlayerPanel
           user={user}
-          isActive={currentPlayer === user.id && gameStatus === "playing"}
+          opponent={opponent}
+          isOpponent={false}
+          isActive={true}
         />
       </div>
 
@@ -449,13 +451,15 @@ const Multiplayer = () => {
           }
           message={
             activeModal === "wrongAnswer"
-              ? lastResult
+              ? lastResult || "Invalid or Incorrect expression."
+              : activeModal === "success"
+              ? `Your result is 100!`
               : activeModal === "opponentWin"
-              ? "Better luck next time!"
-              : ""
+              ? "Your opponent won!"
+              : "Time is up!"
           }
           onConfirm={handleModalConfirm}
-          buttonText="Continue"
+          buttonText="OK"
         />
       )}
     </div>

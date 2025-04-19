@@ -30,7 +30,7 @@ function App() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/play" element={<MatchmakingPage />} />
           <Route path="/singleplayer" element={<SinglePlayer />} />
-          <Route path="/multiplayer" element={<Multiplayer />} />
+          <Route path="/multiplayer/:matchId" element={<Multiplayer />} />
           <Route path="/training" element={<Training />} />
           <Route path="/spectmatch" element={<SpectatorMode />} />
           <Route path="/matchresult" element={<MatchResult />} />
